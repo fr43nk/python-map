@@ -33,6 +33,15 @@ def teardrop_marker(scale=1):
     verts = [(x*scale, y*scale) for x, y in verts]
     return Path(verts, codes)
 
+# https://petercbsmith.github.io/marker-tutorial.html
+def teardrop_from_svg():
+    marker_path, attributes = svg2paths("map-pin.svg")
+    pin_marker_path = parse_path(attributes[0]['d'])
+    pin_marker_path.vertices -= pin_marker_path.vertices.mean(axis=0)
+    pin_marker_path = pin_marker_path.transformed(transforms.Affine2D().rotate_deg(180))
+    pin_marker_path = pin_marker_path.transformed(transforms.Affine2D().translate(0, 22))
+    return pin_marker_path
+
 # Lade das Natural Earth Shapefile von deinem lokalen Speicherplatz
 shapefile_path = './ne_110m_admin_0_countries.shp'
 world = gpd.read_file(shapefile_path)
@@ -47,17 +56,17 @@ cities = {
     "Ljubljana": (46.0569, 14.5058),
     "München": (48.1351, 11.5820),
     "Manchester": (53.4808, -2.2426),
-    "Louvain-la-Neuve": (50.6683, 4.6114),
+    "Leuven": (50.8798, 4.7005),
     "Groningen": (53.2194, 6.5665),
+    "Louvain-la-Neuve": (50.6683, 4.6114),
     "Bergen": (60.3913, 5.3221),
     "Turin": (45.0703, 7.6869),
     "Mailand": (45.4642, 9.1900),
     "Navarra": (42.8125, -1.6458),
     "Aarhus": (56.1629, 10.2039),
     "Stockholm": (59.3293, 18.0686),
-    "Leuven": (50.8798, 4.7005),
-    "Bern": (46.948056,7.4475),
-    "Villigen": (47.533333,8.216667)
+    "Villigen": (47.533333,8.216667),
+    "Bern": (46.948056,7.4475)
 }
 city_points = [Point(lon, lat) for lat, lon in cities.values()]
 city_gdf = gpd.GeoDataFrame({'city': list(cities.keys())}, geometry=city_points, crs='EPSG:4326')
@@ -103,7 +112,8 @@ europe.plot(ax=ax,
             linewidth=1)
 europe.boundary.plot(ax=ax, color='white', linewidth=2)
 
-marker = teardrop_marker(scale=10)
+marker1 = teardrop_marker(scale=10)
+marker = teardrop_from_svg()
 
 # Rote Teardrop Marker für Städte
 for idx, row in city_gdf.iterrows():
@@ -112,6 +122,6 @@ for idx, row in city_gdf.iterrows():
 
 ax.set_axis_off()
 plt.tight_layout()
-#plt.show()
+# plt.show()
 plt.savefig("europe_map.png", dpi=300, format="png")
 
