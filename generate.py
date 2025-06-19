@@ -1,0 +1,152 @@
+import geopandas as gpd
+import matplotlib.pyplot as plt
+from matplotlib.path import Path
+from matplotlib.patches import PathPatch
+import matplotlib.transforms as transforms
+from shapely.geometry import Point
+import numpy as np
+import pyproj
+
+from svgpathtools import svg2paths
+from svgpath2mpl import parse_path
+
+mappin_path, attributes = svg2paths('map-pin.svg')
+mappin_marker = parse_path(attributes[0]['d'])
+
+
+def teardrop_marker(scale=1):
+    # Definiert einen Tropfenpfad durch Kontrollpunkte (normalized)
+    verts = [
+        (0.0, 0.0),    # Spitze/unten
+        (-40, 60),    # rechts oben
+        (0.0, 70),    # obere Mitte (Kopf)
+        (40, 60),   # links oben
+        (0.0, 0.0)     # zurück zur Spitze
+    ]
+    codes = [
+        Path.MOVETO,
+        Path.CURVE3,
+        Path.CURVE3,
+        Path.CURVE3,
+        Path.CLOSEPOLY
+    ]
+    verts = [(x*scale, y*scale) for x, y in verts]
+    return Path(verts, codes)
+
+def teardrop_marker2(x, y, ax, size=0.6, color="red"):
+    # Definiert einen Tropfenpfad durch Kontrollpunkte (normalized)
+    verts = [
+        (0.0, 0.0),    # Spitze/unten
+        (-0.4, 0.4),    # rechts oben
+        (0.0, 0.6),    # obere Mitte (Kopf)
+        (0.4, 0.4),   # links oben
+        (0.0, 0.0)     # zurück zur Spitze
+    ]
+    codes = [
+        Path.MOVETO,
+        Path.CURVE3,
+        Path.CURVE3,
+        Path.CURVE3,
+        Path.CLOSEPOLY
+    ]
+    #verts = [(x*scale, y*scale) for x, y in verts]
+    transform = transforms.Affine2D().scale(size).translate(x, y) + ax.transData
+    path = Path(verts, codes)
+    patch = PathPatch(path, facecolor=color, edgecolor='white', lw=0.8, transform=transform, zorder=3)
+    ax.add_patch(patch)
+
+
+# Lade das Natural Earth Shapefile von deinem lokalen Speicherplatz
+# → Passe hier den Pfad ggf. an, je nachdem, wo du die Datei entpackt hast!
+shapefile_path = './ne_110m_admin_0_countries.shp'
+world = gpd.read_file(shapefile_path)
+
+# Rest wie gehabt: 
+europe = world[(world['CONTINENT'] == 'Europe') &
+               (~world['NAME'].isin(['Russia', 'Greenland', 'French Guiana']))]
+# europe = world[(world['NAME'].isin(['Spain', 'France', 'Denmark', 'Germany', 'Poland', 'Norway', 'Sweden', 'Finland', 'Italy']))]
+# europe = world[(world['NAME'].isin(['Norway']))]
+
+# Städte koordinaten (in WGS84)
+cities = {
+    "Dresden": (51.0504, 13.7373),
+    "Ljubljana": (46.0569, 14.5058),
+    "München": (48.1351, 11.5820),
+    "Manchester": (53.4808, -2.2426),
+    "Louvain-la-Neuve": (50.6683, 4.6114),
+    "Groningen": (53.2194, 6.5665),
+    "Bergen": (60.3913, 5.3221),
+    "Turin": (45.0703, 7.6869),
+    "Mailand": (45.4642, 9.1900),
+    "Navarra": (42.8125, -1.6458),
+    "Aarhus": (56.1629, 10.2039),
+    "Stockholm": (59.3293, 18.0686),
+    "Leuven": (50.8798, 4.7005),
+    "Bern": (46.948056,7.4475),
+    "Villigen": (47.533333,8.216667)
+}
+city_points = [Point(lon, lat) for lat, lon in cities.values()]
+city_gdf = gpd.GeoDataFrame({'city': list(cities.keys())}, geometry=city_points, crs='EPSG:4326')
+
+# Projektion: Web Mercator
+europe = europe.to_crs(epsg=3857)
+city_gdf = city_gdf.to_crs(epsg=3857)
+
+# Punktwolke in den Ländergrenzen
+xmin, ymin, xmax, ymax = europe.total_bounds
+n_points = 200000  # Anzahl Punkte, ggf. anpassen
+x = np.random.uniform(xmin, xmax, n_points)
+y = np.random.uniform(ymin, ymax, n_points)
+points = gpd.GeoDataFrame(
+    geometry=[Point(x_, y_) for x_, y_ in zip(x, y)],
+    crs='EPSG:3857'
+)
+
+# points = gpd.sjoin(points, europe, how='inner', predicate='within')
+
+# Deine gewünschten Grenzen in WGS84 (Länge/Breite in Grad)
+lon_min, lon_max = -11, 40   # z.B. Westeuropa bis Osteuropa
+lat_min, lat_max = 32, 73    # Südeuropa bis Nordeuropa
+
+# Umrechnen in EPSG:3857
+project = pyproj.Transformer.from_crs("EPSG:4326", "EPSG:3857", always_xy=True).transform
+x_min, y_min = project(lon_min, lat_min)
+x_max, y_max = project(lon_max, lat_max)
+
+# Plotten
+fig, ax = plt.subplots(figsize=(12, 12))
+# points.plot(ax=ax, color='grey', markersize=0.2, alpha=0.7)
+
+ax.set_xlim([x_min, x_max])
+ax.set_ylim([y_min, y_max])
+
+# hintergrund und landesgrenzen
+europe.plot(ax=ax, 
+            color='white', 
+            hatch="oooo",
+            edgecolor='grey',
+            alpha=0.6,
+            linewidth=1)
+europe.boundary.plot(ax=ax, color='white', linewidth=2)
+
+marker = teardrop_marker(scale=10)
+
+# Rote Teardrop Marker für Städte
+for idx, row in city_gdf.iterrows():
+    #ax.scatter(row.geometry.x, row.geometry.y, marker=marker, s=500, color='red', edgecolor='black')
+    # transform = transforms.Affine2D().scale(0.6).translate(row.geometry.x, row.geometry.y) + ax.transData
+    # patch = PathPatch(marker, facecolor="red", edgecolor='white', lw=0.8, transform=transform, zorder=3)
+    # ax.add_patch(patch)
+    # teardrop_marker(row.geometry.x, row.geometry.y, ax, color="red", size=20)
+    plt.scatter(row.geometry.x, row.geometry.y, marker=marker, s=3000, zorder=10, color="red", edgecolors="white", linewidths=1)
+    # teardrop = plt.scatter(
+    #     row.geometry.x, row.geometry.y, 
+    #     s=100, color='red', edgecolor='black', zorder=4
+    # )
+    # plt.text(row.geometry.x, row.geometry.y - 40000, row['city'], fontsize=12, ha='center', color='white', weight='bold')
+
+ax.set_axis_off()
+plt.tight_layout()
+#plt.show()
+plt.savefig("europe_map.png", dpi=300, format="png")
+
