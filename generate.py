@@ -33,39 +33,13 @@ def teardrop_marker(scale=1):
     verts = [(x*scale, y*scale) for x, y in verts]
     return Path(verts, codes)
 
-def teardrop_marker2(x, y, ax, size=0.6, color="red"):
-    # Definiert einen Tropfenpfad durch Kontrollpunkte (normalized)
-    verts = [
-        (0.0, 0.0),    # Spitze/unten
-        (-0.4, 0.4),    # rechts oben
-        (0.0, 0.6),    # obere Mitte (Kopf)
-        (0.4, 0.4),   # links oben
-        (0.0, 0.0)     # zurück zur Spitze
-    ]
-    codes = [
-        Path.MOVETO,
-        Path.CURVE3,
-        Path.CURVE3,
-        Path.CURVE3,
-        Path.CLOSEPOLY
-    ]
-    #verts = [(x*scale, y*scale) for x, y in verts]
-    transform = transforms.Affine2D().scale(size).translate(x, y) + ax.transData
-    path = Path(verts, codes)
-    patch = PathPatch(path, facecolor=color, edgecolor='white', lw=0.8, transform=transform, zorder=3)
-    ax.add_patch(patch)
-
-
 # Lade das Natural Earth Shapefile von deinem lokalen Speicherplatz
-# → Passe hier den Pfad ggf. an, je nachdem, wo du die Datei entpackt hast!
 shapefile_path = './ne_110m_admin_0_countries.shp'
 world = gpd.read_file(shapefile_path)
 
 # Rest wie gehabt: 
 europe = world[(world['CONTINENT'] == 'Europe') &
                (~world['NAME'].isin(['Russia', 'Greenland', 'French Guiana']))]
-# europe = world[(world['NAME'].isin(['Spain', 'France', 'Denmark', 'Germany', 'Poland', 'Norway', 'Sweden', 'Finland', 'Italy']))]
-# europe = world[(world['NAME'].isin(['Norway']))]
 
 # Städte koordinaten (in WGS84)
 cities = {
@@ -133,17 +107,8 @@ marker = teardrop_marker(scale=10)
 
 # Rote Teardrop Marker für Städte
 for idx, row in city_gdf.iterrows():
-    #ax.scatter(row.geometry.x, row.geometry.y, marker=marker, s=500, color='red', edgecolor='black')
-    # transform = transforms.Affine2D().scale(0.6).translate(row.geometry.x, row.geometry.y) + ax.transData
-    # patch = PathPatch(marker, facecolor="red", edgecolor='white', lw=0.8, transform=transform, zorder=3)
-    # ax.add_patch(patch)
-    # teardrop_marker(row.geometry.x, row.geometry.y, ax, color="red", size=20)
     plt.scatter(row.geometry.x, row.geometry.y, marker=marker, s=3000, zorder=10, color="red", edgecolors="white", linewidths=1)
-    # teardrop = plt.scatter(
-    #     row.geometry.x, row.geometry.y, 
-    #     s=100, color='red', edgecolor='black', zorder=4
-    # )
-    # plt.text(row.geometry.x, row.geometry.y - 40000, row['city'], fontsize=12, ha='center', color='white', weight='bold')
+
 
 ax.set_axis_off()
 plt.tight_layout()
