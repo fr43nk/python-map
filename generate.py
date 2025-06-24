@@ -68,12 +68,37 @@ cities = {
     "Villigen": (47.533333,8.216667),
     "Bern": (46.948056,7.4475)
 }
+
+partners = {
+"Boston": (42.35843, -71.05977),
+"Delft": (52.00667, 4.35556),
+"Wien": (48.20849, 16.37208),
+"Ljubljana": (46.0569, 14.5058),
+"Zürich": (47.36667, 8.55),
+"Erlangen": (49.59099, 11.00783),
+"Darmstadt": (49.87167, 8.65027),
+"München": (48.1351, 11.5820),
+"Stockholm": (59.3293, 18.0686),
+"Pavia": (45.19205, 9.15917),
+"Turin": (45.07049, 7.68682),
+"Heidelberg": (49.40768, 8.69079),
+"Bergen": (60.3913, 5.3221),
+"Trondheim": (63.43049, 10.39506),
+"Villigen": (47.533333, 8.216667),
+"Brüssel": (50.85045, 4.34878)
+}
 city_points = [Point(lon, lat) for lat, lon in cities.values()]
 city_gdf = gpd.GeoDataFrame({'city': list(cities.keys())}, geometry=city_points, crs='EPSG:4326')
+
+partner_city_points = [Point(lon, lat) for lat, lon in partners.values()]
+partner_city_gdf = gpd.GeoDataFrame({'city': list(partners.keys())}, geometry=partner_city_points, crs='EPSG:4326')
+
+
 
 # Projektion: Web Mercator
 europe = europe.to_crs(epsg=3857)
 city_gdf = city_gdf.to_crs(epsg=3857)
+partner_city_gdf = partner_city_gdf.to_crs(epsg=3857)
 
 # Punktwolke in den Ländergrenzen
 xmin, ymin, xmax, ymax = europe.total_bounds
@@ -88,8 +113,8 @@ points = gpd.GeoDataFrame(
 # points = gpd.sjoin(points, europe, how='inner', predicate='within')
 
 # Deine gewünschten Grenzen in WGS84 (Länge/Breite in Grad)
-lon_min, lon_max = -11, 40   # z.B. Westeuropa bis Osteuropa
-lat_min, lat_max = 32, 73    # Südeuropa bis Nordeuropa
+lon_min, lon_max = -10, 36   # z.B. Westeuropa bis Osteuropa
+lat_min, lat_max = 35, 71    # Südeuropa bis Nordeuropa
 
 # Umrechnen in EPSG:3857
 project = pyproj.Transformer.from_crs("EPSG:4326", "EPSG:3857", always_xy=True).transform
@@ -119,9 +144,53 @@ marker = teardrop_from_svg()
 for idx, row in city_gdf.iterrows():
     plt.scatter(row.geometry.x, row.geometry.y, marker=marker, s=3000, zorder=10, color="red", edgecolors="white", linewidths=1)
 
-
 ax.set_axis_off()
 plt.tight_layout()
 # plt.show()
 plt.savefig("europe_map.png", dpi=300, format="png")
+
+
+fig, ax = plt.subplots(figsize=(12, 12))
+# points.plot(ax=ax, color='grey', markersize=0.2, alpha=0.7)
+
+ax.set_xlim([x_min, x_max])
+ax.set_ylim([y_min, y_max])
+
+# hintergrund und landesgrenzen
+europe.plot(ax=ax, 
+            color='white', 
+            hatch="oooo",
+            edgecolor='grey',
+            alpha=0.6,
+            linewidth=1)
+europe.boundary.plot(ax=ax, color='white', linewidth=2)
+
+marker1 = teardrop_marker(scale=10)
+marker = teardrop_from_svg()
+
+# Rote Teardrop Marker für Städte
+for idx, row in partner_city_gdf.iterrows():
+    plt.scatter(row.geometry.x, row.geometry.y, marker=marker, s=3000, zorder=10, color="steelblue", edgecolors="white", linewidths=1)
+
+
+ax.set_axis_off()
+plt.tight_layout()
+# plt.show()
+plt.savefig("europe_map_partners.png", dpi=300, format="png")
+
+
+
+
+fig, ax = plt.subplots(figsize=(12, 12))
+# points.plot(ax=ax, color='grey', markersize=0.2, alpha=0.7)
+ax.set_axis_off()
+
+ax.set_xlim([x_min, x_max])
+ax.set_ylim([y_min, y_max])
+
+
+ax.set_axis_off()
+plt.tight_layout()
+# plt.show()
+plt.savefig("europe_map_pins.png", dpi=300, format="png")
 
